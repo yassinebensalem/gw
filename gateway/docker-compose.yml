@@ -1,0 +1,68 @@
+version: "3"
+services:
+  admin:
+    build:
+      context: ./happywork-admin-web
+      args:
+        - PUBLIC_URL=/
+
+  client:
+    build:
+      context: ./happywork-web/client
+      args:
+        - PUBLIC_URL=/client
+
+  auth:
+    build: "./happywork-auth-service"
+    ports:
+      - "3001:3000"
+    depends_on:
+      - db
+    environment:
+      - MONGO_DB_URI=mongodb://db/microservices
+
+  message:
+    build: "./happywork-message-service"
+    ports:
+      - "3003:3000"
+    depends_on:
+      - db
+    environment:
+      - API_USER=http://auth:3000/api/v1/auth
+
+  post:
+    build: "./happywork-post-service"
+    ports:
+      - "3002:3000"
+    depends_on:
+      - db
+      - redis
+      - auth
+    environment:
+      - MONGO_DB_URI=mongodb://db/microservices
+      - API_USER=http://auth:3000/api/v1/auth
+    restart: on-failure
+    links:
+      - redis
+
+  db:
+    image: mongo
+    ports:
+      - "27017:27017"
+
+  redis:
+    image: "redis:latest"
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./sdata:/data
+
+  gateway:
+    build:
+      context: ./gateway
+    ports:
+      - 7000:80
+    depends_on:
+      - main
+      - client
+      - admin
