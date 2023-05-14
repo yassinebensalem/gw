@@ -1,68 +1,45 @@
 version: "3"
 services:
-  admin:
-    build:
-      context: ./happywork-admin-web
-      args:
-        - PUBLIC_URL=/
-
-  client:
-    build:
-      context: ./happywork-web/client
-      args:
-        - PUBLIC_URL=/client
-
+  web:
+    image: ricardotulio/hello-express
+    environment:
+      - PUBLIC_URL=/web
+    ports:
+      - "3006:3000"
+    networks:
+      - letsencrypt-docker-compose
+    restart: unless-stopped
   auth:
-    build: "./happywork-auth-service"
+    image: yassinedockeer/z4c-auth-api:latest
+    environment:
+      - PUBLIC_URL=/auth
     ports:
       - "3001:3000"
-    depends_on:
-      - db
+    networks:
+      - letsencrypt-docker-compose
+    restart: unless-stopped
+  doc:
+    image: yassinedockeer/z4c-doc-api:latest
     environment:
-      - MONGO_DB_URI=mongodb://db/microservices
-
-  message:
-    build: "./happywork-message-service"
-    ports:
-      - "3003:3000"
-    depends_on:
-      - db
-    environment:
-      - API_USER=http://auth:3000/api/v1/auth
-
-  post:
-    build: "./happywork-post-service"
+      - PUBLIC_URL=/doc
     ports:
       - "3002:3000"
-    depends_on:
-      - db
-      - redis
-      - auth
-    environment:
-      - MONGO_DB_URI=mongodb://db/microservices
-      - API_USER=http://auth:3000/api/v1/auth
-    restart: on-failure
-    links:
-      - redis
-
-  db:
-    image: mongo
-    ports:
-      - "27017:27017"
-
-  redis:
-    image: "redis:latest"
-    ports:
-      - "6379:6379"
-    volumes:
-      - ./sdata:/data
-
+    networks:
+      - letsencrypt-docker-compose
+    restart: unless-stopped
   gateway:
     build:
       context: ./gateway
     ports:
-      - 7000:80
+      - "3000:80"
+    networks:
+      - letsencrypt-docker-compose
+    restart: unless-stopped
     depends_on:
-      - main
-      - client
-      - admin
+      - doc
+      - web
+      - auth
+networks:
+  letsencrypt-docker-compose:
+    external:
+      name: letsencrypt-docker-compose_default
